@@ -17,6 +17,8 @@ import type { YTLyricSourceResult } from "./providers/yt";
 import { getSongAlbum, getSongMetadata, type SegmentMap } from "./requestSniffer/requestSniffer";
 import { clearCache as clearTranslationCache } from "./translation";
 import { animEngineState } from "@modules/ui/animationEngine";
+import { getLocalLyricSourceResult } from "@modules/lyrics/localLyrics";
+
 
 const hideInstrumentalOnly = registerThemeSetting("blyrics-hide-instrumental-only", false, true);
 
@@ -160,6 +162,27 @@ export async function createLyrics(detail: PlayerDetails, signal: AbortSignal): 
     if (signal.aborted) {
       return;
     }
+
+
+    // ── Local lyrics override ─────────────────────────────────────────────
+    // Check for a locally uploaded lyric file before hitting any remote provider.
+    const localResult = await getLocalLyricSourceResult(
+      videoId,
+      song,
+      artist,
+      album || "",
+      duration,
+      signal
+    );
+    if (localResult && !signal.aborted) {
+      AppState.areLyricsLoaded = true;
+      AppState.areLyricsTicking = true;
+      AppState.lastLoadedVideoId = detail.videoId;
+      shouldCleanupLoader = false;
+      processLyrics(localResult, false, signal);
+      return;
+    }
+    // ── end local lyrics override ─────────────────────────────────────────
 
     log(FETCH_LYRICS_LOG, song, artist);
 

@@ -44,6 +44,8 @@ import { getRequest, setRequest } from "@modules/unison/lyricsRequestTracker";
 import type { UnisonLyricsRequest } from "@modules/unison/types";
 import { requestLyrics } from "@modules/unison/unisonApi";
 import { log } from "@utils";
+import { hasLocalLyrics, removeLocalLyrics, saveLocalLyrics } from "@modules/lyrics/localLyrics";
+import { reloadLyrics } from "@core/appState";
 import { generatePetName } from "@/core/keyIdentity";
 import { byId, deleteVote, type UnisonData, vote } from "../lyrics/providers/unison";
 import { scrollEventHandler } from "./observer";
@@ -734,6 +736,228 @@ function getTrustTier(reputation: number): "new" | "trusted" | "veteran" | "expe
  * @param album - Album name
  * @param duration - Song duration in seconds
  */
+
+// ---------------------------------------------------------------------------
+// Local lyrics upload modal
+// ---------------------------------------------------------------------------
+
+const UPLOAD_MODAL_OVERLAY_CLASS = "blyrics-upload-modal-overlay";
+const UPLOAD_MODAL_CLASS = "blyrics-upload-modal";
+
+function buildComposerUrl(song: string, artist: string, album: string, duration: number, videoId: string): string {
+  const params = new URLSearchParams();
+  if (song) params.set("title", song);
+  if (artist) params.set("artist", artist);
+  if (album) params.set("album", album);
+  if (duration) params.set("duration", String(Math.round(duration)));
+  if (videoId) params.set("videoId", videoId);
+  return `https://composer.boidu.dev/?${params.toString()}`;
+}
+
+async function processUploadedFile(
+  file: File,
+  videoId: string,
+  onSuccess: () => void,
+  statusEl: HTMLElement
+): Promise<void> {
+  const allowed = [".ttml", ".xml", ".lrc", ".txt"];
+  const lower = file.name.toLowerCase();
+  if (!allowed.some(ext => lower.endsWith(ext))) {
+    statusEl.textContent = "Unsupported file type. Use .ttml, .lrc, or .txt";
+    statusEl.style.color = "rgba(255, 100, 100, 0.9)";
+    return;
+  }
+  try {
+    const content = await file.text();
+    await saveLocalLyrics(videoId, content, file.name);
+    onSuccess();
+  } catch (_err) {
+    statusEl.textContent = "Failed to read file. Please try again.";
+    statusEl.style.color = "rgba(255, 100, 100, 0.9)";
+  }
+}
+
+async function closeUploadModal(): Promise<void> {
+  const overlay = document.getElementsByClassName(UPLOAD_MODAL_OVERLAY_CLASS)[0] as HTMLElement | undefined;
+  if (!overlay) return;
+  overlay.style.pointerEvents = "none";
+  const escHandler = (overlay as any)._escHandler;
+  if (escHandler) document.removeEventListener("keydown", escHandler, { capture: true });
+  const modal = overlay.querySelector(`.${UPLOAD_MODAL_CLASS}`) as HTMLElement | null;
+  const ANIM_DURATION = 150;
+  const ANIM_EASING = "ease-in";
+  const pending: Promise<Animation>[] = [
+    overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ANIM_DURATION, easing: ANIM_EASING, fill: "forwards" }).finished,
+  ];
+  if (modal) {
+    pending.push(
+      modal.animate(
+        [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.95) translateY(8px)" }],
+        { duration: ANIM_DURATION, easing: ANIM_EASING, fill: "forwards" }
+      ).finished
+    );
+  }
+  await Promise.all(pending);
+  overlay.remove();
+}
+
+export function showLocalLyricsUploadModal(
+  song: string,
+  artist: string,
+  album: string,
+  duration: number,
+  videoId?: string
+): void {
+  const app = document.querySelector("ytmusic-app");
+  if (!app || document.getElementsByClassName(UPLOAD_MODAL_OVERLAY_CLASS).length > 0) return;
+
+  const overlay = document.createElement("div");
+  overlay.classList.add(UPLOAD_MODAL_OVERLAY_CLASS);
+
+  const modal = document.createElement("div");
+  modal.classList.add(UPLOAD_MODAL_CLASS);
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "blyrics-upload-modal__header";
+
+  const title = document.createElement("h2");
+  title.className = "blyrics-upload-modal__title";
+  title.textContent = "Upload local lyrics";
+  header.appendChild(title);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "blyrics-upload-modal__close";
+  closeBtn.setAttribute("aria-label", "Close");
+  const closeSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  closeSvg.setAttribute("width", "20");
+  closeSvg.setAttribute("height", "20");
+  closeSvg.setAttribute("viewBox", "0 0 24 24");
+  closeSvg.setAttribute("fill", "none");
+  closeSvg.setAttribute("stroke", "currentColor");
+  closeSvg.setAttribute("stroke-width", "2");
+  closeSvg.setAttribute("stroke-linecap", "round");
+  closeSvg.setAttribute("stroke-linejoin", "round");
+  const l1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  l1.setAttribute("x1", "18"); l1.setAttribute("y1", "6"); l1.setAttribute("x2", "6"); l1.setAttribute("y2", "18");
+  const l2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  l2.setAttribute("x1", "6"); l2.setAttribute("y1", "6"); l2.setAttribute("x2", "18"); l2.setAttribute("y2", "18");
+  closeSvg.appendChild(l1);
+  closeSvg.appendChild(l2);
+  closeBtn.appendChild(closeSvg);
+  closeBtn.addEventListener("click", () => void closeUploadModal());
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  // Drop zone
+  const dropzone = document.createElement("div");
+  dropzone.className = "blyrics-upload-dropzone";
+
+  const uploadSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  uploadSvg.setAttribute("width", "32");
+  uploadSvg.setAttribute("height", "32");
+  uploadSvg.setAttribute("viewBox", "0 0 24 24");
+  uploadSvg.setAttribute("fill", "none");
+  uploadSvg.setAttribute("stroke", "currentColor");
+  uploadSvg.setAttribute("stroke-width", "1.5");
+  uploadSvg.setAttribute("stroke-linecap", "round");
+  uploadSvg.setAttribute("stroke-linejoin", "round");
+  const up1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  up1.setAttribute("d", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4");
+  const up2 = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  up2.setAttribute("points", "17 8 12 3 7 8");
+  const up3 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  up3.setAttribute("x1", "12"); up3.setAttribute("y1", "3"); up3.setAttribute("x2", "12"); up3.setAttribute("y2", "15");
+  uploadSvg.appendChild(up1);
+  uploadSvg.appendChild(up2);
+  uploadSvg.appendChild(up3);
+  dropzone.appendChild(uploadSvg);
+
+  const dropLabel = document.createElement("span");
+  dropLabel.className = "blyrics-upload-dropzone__label";
+  dropLabel.textContent = "Drag & drop your lyric file here, or click to browse";
+  dropzone.appendChild(dropLabel);
+
+  const dropHint = document.createElement("span");
+  dropHint.className = "blyrics-upload-dropzone__hint";
+  dropHint.textContent = "Supported: .ttml, .lrc, .txt";
+  dropzone.appendChild(dropHint);
+
+  const statusEl = document.createElement("span");
+  statusEl.className = "blyrics-upload-dropzone__status";
+  dropzone.appendChild(statusEl);
+
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = ".ttml,.xml,.lrc,.txt";
+  fileInput.style.display = "none";
+  dropzone.appendChild(fileInput);
+
+  const onSuccess = () => {
+    void closeUploadModal();
+    reloadLyrics();
+  };
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file || !videoId) return;
+    statusEl.textContent = "Loading…";
+    statusEl.style.color = "rgba(255,255,255,0.6)";
+    await processUploadedFile(file, videoId, onSuccess, statusEl);
+  });
+
+  dropzone.addEventListener("click", () => fileInput.click());
+
+  dropzone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropzone.classList.add("blyrics-upload-dropzone--dragover");
+  });
+  dropzone.addEventListener("dragleave", () => {
+    dropzone.classList.remove("blyrics-upload-dropzone--dragover");
+  });
+  dropzone.addEventListener("drop", async e => {
+    e.preventDefault();
+    dropzone.classList.remove("blyrics-upload-dropzone--dragover");
+    const file = e.dataTransfer?.files[0];
+    if (!file || !videoId) return;
+    statusEl.textContent = "Loading…";
+    statusEl.style.color = "rgba(255,255,255,0.6)";
+    await processUploadedFile(file, videoId, onSuccess, statusEl);
+  });
+
+  modal.appendChild(dropzone);
+
+  // Composer link
+  const composerRow = document.createElement("p");
+  composerRow.className = "blyrics-upload-composer-hint";
+  composerRow.textContent = "Compose lyrics at ";
+
+  const composerLink = document.createElement("a");
+  composerLink.href = buildComposerUrl(song, artist, album, duration, videoId ?? "");
+  composerLink.target = "_blank";
+  composerLink.rel = "noreferrer noopener";
+  composerLink.textContent = "composer.boidu.dev";
+  composerRow.appendChild(composerLink);
+  modal.appendChild(composerRow);
+
+  overlay.appendChild(modal);
+  app.appendChild(overlay);
+
+  const ANIM_DURATION = 200;
+  const ANIM_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+  overlay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ANIM_DURATION, easing: ANIM_EASING, fill: "backwards" });
+  modal.animate(
+    [{ opacity: 0, transform: "scale(0.95) translateY(16px)" }, { opacity: 1, transform: "scale(1) translateY(0)" }],
+    { duration: ANIM_DURATION, easing: ANIM_EASING, fill: "backwards" }
+  );
+
+  const escHandler = (e: KeyboardEvent) => {
+    if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); void closeUploadModal(); }
+  };
+  document.addEventListener("keydown", escHandler, { capture: true });
+  (overlay as any)._escHandler = escHandler;
+}
+
 function createFooter(
   song: string,
   artist: string,
@@ -799,6 +1023,93 @@ function createFooter(
     if (videoId && showRequestButton) {
       footer.appendChild(createRequestSyncedButton({ videoId, song, artist }));
     }
+
+    // ── Local lyrics buttons ──────────────────────────────────────────────
+    const uploadBtn = document.createElement("button");
+    uploadBtn.className = `${FOOTER_CLASS}__local-upload`;
+    uploadBtn.title = "Upload local lyrics";
+    uploadBtn.setAttribute("aria-label", "Upload local lyrics");
+
+    const uploadBtnSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    uploadBtnSvg.setAttribute("viewBox", "0 0 24 24");
+    uploadBtnSvg.setAttribute("width", "16");
+    uploadBtnSvg.setAttribute("height", "16");
+    uploadBtnSvg.setAttribute("fill", "none");
+    uploadBtnSvg.setAttribute("stroke", "currentColor");
+    uploadBtnSvg.setAttribute("stroke-width", "2");
+    uploadBtnSvg.setAttribute("stroke-linecap", "round");
+    uploadBtnSvg.setAttribute("stroke-linejoin", "round");
+    const ubp = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    ubp.setAttribute("d", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4");
+    const ubpl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    ubpl.setAttribute("points", "17 8 12 3 7 8");
+    const ubl = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    ubl.setAttribute("x1", "12"); ubl.setAttribute("y1", "3"); ubl.setAttribute("x2", "12"); ubl.setAttribute("y2", "15");
+    uploadBtnSvg.appendChild(ubp);
+    uploadBtnSvg.appendChild(ubpl);
+    uploadBtnSvg.appendChild(ubl);
+    const uploadBtnLabel = document.createElement("span");
+    uploadBtnLabel.textContent = "Upload lyrics";
+    uploadBtn.appendChild(uploadBtnSvg);
+    uploadBtn.appendChild(uploadBtnLabel);
+
+    uploadBtn.addEventListener("click", () => {
+      showLocalLyricsUploadModal(song, artist, album, duration, videoId);
+    });
+    footer.appendChild(uploadBtn);
+
+    if (videoId) {
+      const removeBtn = document.createElement("button");
+      removeBtn.className = `${FOOTER_CLASS}__local-remove`;
+      removeBtn.title = "Remove local lyrics file";
+      removeBtn.setAttribute("aria-label", "Remove local lyrics file");
+
+      const removeBtnSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      removeBtnSvg.setAttribute("viewBox", "0 0 24 24");
+      removeBtnSvg.setAttribute("width", "16");
+      removeBtnSvg.setAttribute("height", "16");
+      removeBtnSvg.setAttribute("fill", "none");
+      removeBtnSvg.setAttribute("stroke", "currentColor");
+      removeBtnSvg.setAttribute("stroke-width", "2");
+      removeBtnSvg.setAttribute("stroke-linecap", "round");
+      removeBtnSvg.setAttribute("stroke-linejoin", "round");
+      const rpl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      rpl.setAttribute("points", "3 6 5 6 21 6");
+      const rpa = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      rpa.setAttribute("d", "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6");
+      const rl1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      rl1.setAttribute("d", "M10 11v6");
+      const rl2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      rl2.setAttribute("d", "M14 11v6");
+      const rl3 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      rl3.setAttribute("d", "M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2");
+      removeBtnSvg.appendChild(rpl);
+      removeBtnSvg.appendChild(rpa);
+      removeBtnSvg.appendChild(rl1);
+      removeBtnSvg.appendChild(rl2);
+      removeBtnSvg.appendChild(rl3);
+      const removeBtnLabel = document.createElement("span");
+      removeBtnLabel.textContent = "Remove local lyrics";
+      removeBtn.appendChild(removeBtnSvg);
+      removeBtn.appendChild(removeBtnLabel);
+
+      removeBtn.style.display = "none";
+
+      const currentVideoId = videoId;
+      void hasLocalLyrics(currentVideoId).then(has => {
+        if (has) removeBtn.style.display = "";
+      });
+
+      removeBtn.addEventListener("click", () => {
+        void removeLocalLyrics(currentVideoId).then(() => {
+          removeBtn.style.display = "none";
+          reloadLyrics();
+        });
+      });
+      footer.appendChild(removeBtn);
+    }
+    // ── end local lyrics buttons ──────────────────────────────────────────
+
     footer.appendChild(discordLink);
 
     footer.removeAttribute("is-empty");

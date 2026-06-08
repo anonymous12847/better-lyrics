@@ -1498,4 +1498,16 @@
     "message": "votes",
     "description": "Plural noun used after numbers other than 1 in the Unison vote count (e.g. '5 votes')"
   }
+   "lyrics_uploadLocalLyrics": {
+    "message": "Upload local lyrics",
+    "description": "Footer button to open the local lyric file upload modal"
+  },
+  "lyrics_removeLocalLyrics": {
+    "message": "Remove local lyrics",
+    "description": "Footer button to remove the locally uploaded lyric file for the current song"
+  },
+  "lyrics_localFileSource": {
+    "message": "Local File",
+    "description": "Source label shown in the footer when lyrics come from a locally uploaded file"
+  }
 }

@@ -685,3 +685,134 @@
 		background-position: -200% 0;
 	}
 }
+/* Shared base for upload and remove buttons in the footer */
+.blyrics-footer__local-upload,
+.blyrics-footer__local-remove {
+  align-items: center;
+  background-color: var(--blyrics-footer-bg-color);
+  border: 1px solid var(--blyrics-footer-border-color);
+  border-radius: var(--blyrics-border-radius);
+  color: var(--blyrics-footer-text-color);
+  cursor: pointer;
+  display: flex;
+  font-family: var(--blyrics-footer-font-family);
+  font-size: var(--blyrics-footer-font-size);
+  font-weight: var(--blyrics-footer-font-weight);
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: background-color 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.blyrics-footer__local-upload:hover {
+  background-color: hsla(220, 80%, 60%, 0.2);
+  color: hsl(220, 90%, 80%);
+  border-color: hsla(220, 80%, 60%, 0.4);
+}
+
+.blyrics-footer__local-remove {
+  border-color: hsla(0, 60%, 50%, 0.3);
+}
+
+.blyrics-footer__local-remove:hover {
+  background-color: hsla(0, 70%, 50%, 0.2);
+  color: hsl(0, 90%, 80%);
+  border-color: hsla(0, 70%, 50%, 0.5);
+}
+
+.blyrics-footer__local-upload > svg,
+.blyrics-footer__local-remove > svg {
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   UPLOAD MODAL OVERLAY
+   ========================================================= */
+
+/* The overlay reuses .blyrics-modal-overlay styles already defined
+   in modal.css. The rules below add the upload-specific dropzone
+   and composer hint inside the modal. */
+
+.blyrics-upload-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 340px;
+  max-width: 440px;
+  width: 100%;
+}
+
+/* ── Drag-and-drop zone ── */
+.blyrics-upload-dropzone {
+  align-items: center;
+  background: hsla(0, 0%, 100%, 0.04);
+  border: 1.5px dashed hsla(0, 0%, 100%, 0.18);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 28px 20px 22px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+
+.blyrics-upload-dropzone:hover,
+.blyrics-upload-dropzone--dragover {
+  background: hsla(220, 80%, 60%, 0.08);
+  border-color: hsla(220, 80%, 60%, 0.45);
+}
+
+.blyrics-upload-dropzone > svg {
+  color: rgba(255, 255, 255, 0.45);
+  transition: color 0.15s ease;
+}
+
+.blyrics-upload-dropzone:hover > svg,
+.blyrics-upload-dropzone--dragover > svg {
+  color: hsl(220, 80%, 75%);
+}
+
+.blyrics-upload-dropzone__label {
+  color: rgba(255, 255, 255, 0.8);
+  font-family: var(--blyrics-footer-font-family);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.blyrics-upload-dropzone__hint {
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--blyrics-footer-font-family);
+  font-size: 11px;
+  text-align: center;
+}
+
+.blyrics-upload-dropzone__status {
+  color: rgba(255, 255, 255, 0.55);
+  font-family: var(--blyrics-footer-font-family);
+  font-size: 12px;
+  min-height: 16px;
+  text-align: center;
+}
+
+/* ── Composer hint below the dropzone ── */
+.blyrics-upload-composer-hint {
+  color: rgba(255, 255, 255, 0.45);
+  font-family: var(--blyrics-footer-font-family);
+  font-size: 12px;
+  margin: 0;
+  text-align: center;
+}
+
+.blyrics-upload-composer-hint > a {
+  color: rgba(129, 140, 248, 0.9);
+  text-decoration: none;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+
+.blyrics-upload-composer-hint > a:hover {
+  color: rgb(149, 160, 255);
+  text-decoration: underline;
+}

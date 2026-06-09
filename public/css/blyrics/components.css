@@ -700,24 +700,7 @@
   font-weight: var(--blyrics-footer-font-weight);
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  transition: background-color 0.2s, color 0.2s;
   white-space: nowrap;
-}
-
-.blyrics-footer__local-upload:hover {
-  background-color: hsla(220, 80%, 60%, 0.2);
-  color: hsl(220, 90%, 80%);
-  border-color: hsla(220, 80%, 60%, 0.4);
-}
-
-.blyrics-footer__local-remove {
-  border-color: hsla(0, 60%, 50%, 0.3);
-}
-
-.blyrics-footer__local-remove:hover {
-  background-color: hsla(0, 70%, 50%, 0.2);
-  color: hsl(0, 90%, 80%);
-  border-color: hsla(0, 70%, 50%, 0.5);
 }
 
 .blyrics-footer__local-upload > svg,
@@ -726,21 +709,12 @@
 }
 
 /* =========================================================
-   UPLOAD MODAL OVERLAY
+   UPLOAD MODAL (dropzone + hint rows)
    ========================================================= */
 
-/* The overlay reuses .blyrics-modal-overlay styles already defined
-   in modal.css. The rules below add the upload-specific dropzone
-   and composer hint inside the modal. */
-
-.blyrics-upload-modal {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 340px;
-  max-width: 440px;
-  width: 100%;
-}
+/* The overlay and modal container inherit all styling from
+   .blyrics-modal-overlay and .blyrics-modal in modal.css.
+   Rules below only add upload-specific content inside. */
 
 /* ── Drag-and-drop zone ── */
 .blyrics-upload-dropzone {
@@ -796,8 +770,8 @@
   text-align: center;
 }
 
-/* ── Composer hint below the dropzone ── */
-.blyrics-upload-composer-hint {
+/* ── Hint rows below the dropzone (composer + Unison) ── */
+.blyrics-upload-modal-hint {
   color: rgba(255, 255, 255, 0.45);
   font-family: var(--blyrics-footer-font-family);
   font-size: 12px;
@@ -805,14 +779,18 @@
   text-align: center;
 }
 
-.blyrics-upload-composer-hint > a {
+.blyrics-upload-modal-hint > a {
   color: rgba(129, 140, 248, 0.9);
   text-decoration: none;
   text-underline-offset: 2px;
   transition: color 0.15s ease;
 }
 
-.blyrics-upload-composer-hint > a:hover {
+.blyrics-upload-modal-hint > a:hover {
+  color: rgb(149, 160, 255);
+  text-decoration: underline;
+}
+
   color: rgb(149, 160, 255);
   text-decoration: underline;
 }

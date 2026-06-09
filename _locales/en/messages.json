@@ -1497,7 +1497,7 @@
   "unison_vote_plural": {
     "message": "votes",
     "description": "Plural noun used after numbers other than 1 in the Unison vote count (e.g. '5 votes')"
-  }
+  },
    "lyrics_uploadLocalLyrics": {
     "message": "Upload local lyrics",
     "description": "Footer button to open the local lyric file upload modal"

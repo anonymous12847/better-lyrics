@@ -685,15 +685,24 @@
 		background-position: -200% 0;
 	}
 }
-/* The upload/remove buttons already inherit layout, border,
-   background, font, and padding from .blyrics-footer__container.
-   These rules only add the flex layout needed for the icon+label. */
-.blyrics-footer__local-upload,
-.blyrics-footer__local-remove {
+/* Reset browser UA button styles and match the existing footer container look. */
+button.blyrics-footer__local-upload,
+button.blyrics-footer__local-remove {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: var(--blyrics-footer-bg-color);
+  border: 1px solid var(--blyrics-footer-border-color);
+  border-radius: var(--blyrics-border-radius);
+  color: var(--blyrics-footer-text-color);
   cursor: pointer;
   display: flex;
   align-items: center;
+  font-family: var(--blyrics-footer-font-family);
+  font-size: var(--blyrics-footer-font-size);
+  font-weight: var(--blyrics-footer-font-weight);
   gap: 0.5rem;
+  line-height: var(--ytmusic-body-line-height);
+  padding: 0.5rem 1.25rem;
   white-space: nowrap;
 }
 

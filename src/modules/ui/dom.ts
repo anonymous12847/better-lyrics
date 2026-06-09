@@ -370,12 +370,17 @@ export function addFooter(
   createFooter(song, artist, album, duration, videoId, showRequestButton);
 
   const footerLink = document.getElementById("betterLyricsFooterLink") as HTMLAnchorElement;
-  sourceHref = sourceHref || HOMEPAGE_URL;
 
   const info = providerKey ? providerDisplayInfo[providerKey] : null;
 
   footerLink.textContent = "";
-  footerLink.href = sourceHref;
+  if (sourceHref) {
+    footerLink.href = sourceHref || HOMEPAGE_URL;
+  } else {
+    footerLink.removeAttribute("href");
+    footerLink.style.cursor = "default";
+    footerLink.style.pointerEvents = "none";
+  }
 
   if (info) {
     footerLink.appendChild(document.createTextNode(info.name));

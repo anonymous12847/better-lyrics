@@ -26,6 +26,8 @@ import {
   TAB_RENDERER_SELECTOR,
   TRANSLATED_LYRICS_CLASS,
   UNISON_DOCK_CLASS,
+  MODAL_CLASS,
+  MODAL_OVERLAY_CLASS,
 } from "@constants";
 import { AppState } from "@core/appState";
 import { t } from "@core/i18n";
@@ -777,28 +779,31 @@ async function processUploadedFile(
   }
 }
 
+let isUploadModalClosing = false;
+
 async function closeUploadModal(): Promise<void> {
+  if (isUploadModalClosing) return;
   const overlay = document.getElementsByClassName(UPLOAD_MODAL_OVERLAY_CLASS)[0] as HTMLElement | undefined;
   if (!overlay) return;
+  isUploadModalClosing = true;
   overlay.style.pointerEvents = "none";
   const escHandler = (overlay as any)._escHandler;
   if (escHandler) document.removeEventListener("keydown", escHandler, { capture: true });
   const modal = overlay.querySelector(`.${UPLOAD_MODAL_CLASS}`) as HTMLElement | null;
-  const ANIM_DURATION = 150;
-  const ANIM_EASING = "ease-in";
   const pending: Promise<Animation>[] = [
-    overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ANIM_DURATION, easing: ANIM_EASING, fill: "forwards" }).finished,
+    overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: "ease-in", fill: "forwards" }).finished,
   ];
   if (modal) {
     pending.push(
       modal.animate(
         [{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.95) translateY(8px)" }],
-        { duration: ANIM_DURATION, easing: ANIM_EASING, fill: "forwards" }
+        { duration: 150, easing: "ease-in", fill: "forwards" }
       ).finished
     );
   }
   await Promise.all(pending);
   overlay.remove();
+  isUploadModalClosing = false;
 }
 
 export function showLocalLyricsUploadModal(
@@ -811,39 +816,36 @@ export function showLocalLyricsUploadModal(
   const app = document.querySelector("ytmusic-app");
   if (!app || document.getElementsByClassName(UPLOAD_MODAL_OVERLAY_CLASS).length > 0) return;
 
+  // Use MODAL_OVERLAY_CLASS so modal.css provides the backdrop, positioning, and z-index
   const overlay = document.createElement("div");
-  overlay.classList.add(UPLOAD_MODAL_OVERLAY_CLASS);
+  overlay.classList.add(MODAL_OVERLAY_CLASS, UPLOAD_MODAL_OVERLAY_CLASS);
 
+  // Use MODAL_CLASS so modal.css provides the modal container styling
   const modal = document.createElement("div");
-  modal.classList.add(UPLOAD_MODAL_CLASS);
+  modal.classList.add(MODAL_CLASS, UPLOAD_MODAL_CLASS);
 
   // Header
   const header = document.createElement("div");
-  header.className = "blyrics-upload-modal__header";
+  header.className = `${MODAL_CLASS}--header`;
 
-  const title = document.createElement("h2");
-  title.className = "blyrics-upload-modal__title";
-  title.textContent = "Upload local lyrics";
-  header.appendChild(title);
+  const titleEl = document.createElement("h1");
+  titleEl.className = `${MODAL_CLASS}--title`;
+  titleEl.textContent = "Upload local lyrics";
+  header.appendChild(titleEl);
 
   const closeBtn = document.createElement("button");
-  closeBtn.className = "blyrics-upload-modal__close";
+  closeBtn.className = `${MODAL_CLASS}--close`;
   closeBtn.setAttribute("aria-label", "Close");
   const closeSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  closeSvg.setAttribute("width", "20");
-  closeSvg.setAttribute("height", "20");
-  closeSvg.setAttribute("viewBox", "0 0 24 24");
-  closeSvg.setAttribute("fill", "none");
-  closeSvg.setAttribute("stroke", "currentColor");
-  closeSvg.setAttribute("stroke-width", "2");
-  closeSvg.setAttribute("stroke-linecap", "round");
+  closeSvg.setAttribute("width", "24"); closeSvg.setAttribute("height", "24");
+  closeSvg.setAttribute("viewBox", "0 0 24 24"); closeSvg.setAttribute("stroke", "white");
+  closeSvg.setAttribute("stroke-width", "1.5"); closeSvg.setAttribute("stroke-linecap", "round");
   closeSvg.setAttribute("stroke-linejoin", "round");
-  const l1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  l1.setAttribute("x1", "18"); l1.setAttribute("y1", "6"); l1.setAttribute("x2", "6"); l1.setAttribute("y2", "18");
-  const l2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  l2.setAttribute("x1", "6"); l2.setAttribute("y1", "6"); l2.setAttribute("x2", "18"); l2.setAttribute("y2", "18");
-  closeSvg.appendChild(l1);
-  closeSvg.appendChild(l2);
+  const csp1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  csp1.setAttribute("d", "M18 6l-12 12");
+  const csp2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  csp2.setAttribute("d", "M6 6l12 12");
+  closeSvg.appendChild(csp1); closeSvg.appendChild(csp2);
   closeBtn.appendChild(closeSvg);
   closeBtn.addEventListener("click", () => void closeUploadModal());
   header.appendChild(closeBtn);
@@ -854,23 +856,17 @@ export function showLocalLyricsUploadModal(
   dropzone.className = "blyrics-upload-dropzone";
 
   const uploadSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  uploadSvg.setAttribute("width", "32");
-  uploadSvg.setAttribute("height", "32");
-  uploadSvg.setAttribute("viewBox", "0 0 24 24");
-  uploadSvg.setAttribute("fill", "none");
-  uploadSvg.setAttribute("stroke", "currentColor");
-  uploadSvg.setAttribute("stroke-width", "1.5");
-  uploadSvg.setAttribute("stroke-linecap", "round");
-  uploadSvg.setAttribute("stroke-linejoin", "round");
-  const up1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  up1.setAttribute("d", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4");
-  const up2 = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  up2.setAttribute("points", "17 8 12 3 7 8");
-  const up3 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  up3.setAttribute("x1", "12"); up3.setAttribute("y1", "3"); up3.setAttribute("x2", "12"); up3.setAttribute("y2", "15");
-  uploadSvg.appendChild(up1);
-  uploadSvg.appendChild(up2);
-  uploadSvg.appendChild(up3);
+  uploadSvg.setAttribute("width", "32"); uploadSvg.setAttribute("height", "32");
+  uploadSvg.setAttribute("viewBox", "0 0 24 24"); uploadSvg.setAttribute("fill", "none");
+  uploadSvg.setAttribute("stroke", "currentColor"); uploadSvg.setAttribute("stroke-width", "1.5");
+  uploadSvg.setAttribute("stroke-linecap", "round"); uploadSvg.setAttribute("stroke-linejoin", "round");
+  const usp1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  usp1.setAttribute("d", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4");
+  const usp2 = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  usp2.setAttribute("points", "17 8 12 3 7 8");
+  const usl = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  usl.setAttribute("x1", "12"); usl.setAttribute("y1", "3"); usl.setAttribute("x2", "12"); usl.setAttribute("y2", "15");
+  uploadSvg.appendChild(usp1); uploadSvg.appendChild(usp2); uploadSvg.appendChild(usl);
   dropzone.appendChild(uploadSvg);
 
   const dropLabel = document.createElement("span");
@@ -893,10 +889,7 @@ export function showLocalLyricsUploadModal(
   fileInput.style.display = "none";
   dropzone.appendChild(fileInput);
 
-  const onSuccess = () => {
-    void closeUploadModal();
-    reloadLyrics();
-  };
+  const onSuccess = () => { void closeUploadModal(); reloadLyrics(); };
 
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files?.[0];
@@ -905,16 +898,9 @@ export function showLocalLyricsUploadModal(
     statusEl.style.color = "rgba(255,255,255,0.6)";
     await processUploadedFile(file, videoId, onSuccess, statusEl);
   });
-
   dropzone.addEventListener("click", () => fileInput.click());
-
-  dropzone.addEventListener("dragover", e => {
-    e.preventDefault();
-    dropzone.classList.add("blyrics-upload-dropzone--dragover");
-  });
-  dropzone.addEventListener("dragleave", () => {
-    dropzone.classList.remove("blyrics-upload-dropzone--dragover");
-  });
+  dropzone.addEventListener("dragover", e => { e.preventDefault(); dropzone.classList.add("blyrics-upload-dropzone--dragover"); });
+  dropzone.addEventListener("dragleave", () => { dropzone.classList.remove("blyrics-upload-dropzone--dragover"); });
   dropzone.addEventListener("drop", async e => {
     e.preventDefault();
     dropzone.classList.remove("blyrics-upload-dropzone--dragover");
@@ -924,14 +910,12 @@ export function showLocalLyricsUploadModal(
     statusEl.style.color = "rgba(255,255,255,0.6)";
     await processUploadedFile(file, videoId, onSuccess, statusEl);
   });
-
   modal.appendChild(dropzone);
 
   // Composer link
   const composerRow = document.createElement("p");
   composerRow.className = "blyrics-upload-composer-hint";
   composerRow.textContent = "Compose lyrics at ";
-
   const composerLink = document.createElement("a");
   composerLink.href = buildComposerUrl(song, artist, album, duration, videoId ?? "");
   composerLink.target = "_blank";
@@ -943,12 +927,11 @@ export function showLocalLyricsUploadModal(
   overlay.appendChild(modal);
   app.appendChild(overlay);
 
-  const ANIM_DURATION = 200;
   const ANIM_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
-  overlay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ANIM_DURATION, easing: ANIM_EASING, fill: "backwards" });
+  overlay.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: ANIM_EASING, fill: "backwards" });
   modal.animate(
     [{ opacity: 0, transform: "scale(0.95) translateY(16px)" }, { opacity: 1, transform: "scale(1) translateY(0)" }],
-    { duration: ANIM_DURATION, easing: ANIM_EASING, fill: "backwards" }
+    { duration: 200, easing: ANIM_EASING, fill: "backwards" }
   );
 
   const escHandler = (e: KeyboardEvent) => {
@@ -1029,33 +1012,21 @@ function createFooter(
     uploadBtn.className = `${FOOTER_CLASS}__local-upload`;
     uploadBtn.title = "Upload local lyrics";
     uploadBtn.setAttribute("aria-label", "Upload local lyrics");
-
-    const uploadBtnSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    uploadBtnSvg.setAttribute("viewBox", "0 0 24 24");
-    uploadBtnSvg.setAttribute("width", "16");
-    uploadBtnSvg.setAttribute("height", "16");
-    uploadBtnSvg.setAttribute("fill", "none");
-    uploadBtnSvg.setAttribute("stroke", "currentColor");
-    uploadBtnSvg.setAttribute("stroke-width", "2");
-    uploadBtnSvg.setAttribute("stroke-linecap", "round");
-    uploadBtnSvg.setAttribute("stroke-linejoin", "round");
+    const ubSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    ubSvg.setAttribute("viewBox", "0 0 24 24"); ubSvg.setAttribute("width", "16"); ubSvg.setAttribute("height", "16");
+    ubSvg.setAttribute("fill", "none"); ubSvg.setAttribute("stroke", "currentColor");
+    ubSvg.setAttribute("stroke-width", "2"); ubSvg.setAttribute("stroke-linecap", "round"); ubSvg.setAttribute("stroke-linejoin", "round");
     const ubp = document.createElementNS("http://www.w3.org/2000/svg", "path");
     ubp.setAttribute("d", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4");
     const ubpl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
     ubpl.setAttribute("points", "17 8 12 3 7 8");
     const ubl = document.createElementNS("http://www.w3.org/2000/svg", "line");
     ubl.setAttribute("x1", "12"); ubl.setAttribute("y1", "3"); ubl.setAttribute("x2", "12"); ubl.setAttribute("y2", "15");
-    uploadBtnSvg.appendChild(ubp);
-    uploadBtnSvg.appendChild(ubpl);
-    uploadBtnSvg.appendChild(ubl);
-    const uploadBtnLabel = document.createElement("span");
-    uploadBtnLabel.textContent = "Upload lyrics";
-    uploadBtn.appendChild(uploadBtnSvg);
-    uploadBtn.appendChild(uploadBtnLabel);
-
-    uploadBtn.addEventListener("click", () => {
-      showLocalLyricsUploadModal(song, artist, album, duration, videoId);
-    });
+    ubSvg.appendChild(ubp); ubSvg.appendChild(ubpl); ubSvg.appendChild(ubl);
+    const ubLabel = document.createElement("span");
+    ubLabel.textContent = "Upload lyrics";
+    uploadBtn.appendChild(ubSvg); uploadBtn.appendChild(ubLabel);
+    uploadBtn.addEventListener("click", () => { showLocalLyricsUploadModal(song, artist, album, duration, videoId); });
     footer.appendChild(uploadBtn);
 
     if (videoId) {
@@ -1063,48 +1034,26 @@ function createFooter(
       removeBtn.className = `${FOOTER_CLASS}__local-remove`;
       removeBtn.title = "Remove local lyrics file";
       removeBtn.setAttribute("aria-label", "Remove local lyrics file");
-
-      const removeBtnSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      removeBtnSvg.setAttribute("viewBox", "0 0 24 24");
-      removeBtnSvg.setAttribute("width", "16");
-      removeBtnSvg.setAttribute("height", "16");
-      removeBtnSvg.setAttribute("fill", "none");
-      removeBtnSvg.setAttribute("stroke", "currentColor");
-      removeBtnSvg.setAttribute("stroke-width", "2");
-      removeBtnSvg.setAttribute("stroke-linecap", "round");
-      removeBtnSvg.setAttribute("stroke-linejoin", "round");
+      const rbSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      rbSvg.setAttribute("viewBox", "0 0 24 24"); rbSvg.setAttribute("width", "16"); rbSvg.setAttribute("height", "16");
+      rbSvg.setAttribute("fill", "none"); rbSvg.setAttribute("stroke", "currentColor");
+      rbSvg.setAttribute("stroke-width", "2"); rbSvg.setAttribute("stroke-linecap", "round"); rbSvg.setAttribute("stroke-linejoin", "round");
       const rpl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
       rpl.setAttribute("points", "3 6 5 6 21 6");
       const rpa = document.createElementNS("http://www.w3.org/2000/svg", "path");
       rpa.setAttribute("d", "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6");
-      const rl1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      rl1.setAttribute("d", "M10 11v6");
-      const rl2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      rl2.setAttribute("d", "M14 11v6");
-      const rl3 = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      rl3.setAttribute("d", "M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2");
-      removeBtnSvg.appendChild(rpl);
-      removeBtnSvg.appendChild(rpa);
-      removeBtnSvg.appendChild(rl1);
-      removeBtnSvg.appendChild(rl2);
-      removeBtnSvg.appendChild(rl3);
-      const removeBtnLabel = document.createElement("span");
-      removeBtnLabel.textContent = "Remove local lyrics";
-      removeBtn.appendChild(removeBtnSvg);
-      removeBtn.appendChild(removeBtnLabel);
-
+      const rl1 = document.createElementNS("http://www.w3.org/2000/svg", "path"); rl1.setAttribute("d", "M10 11v6");
+      const rl2 = document.createElementNS("http://www.w3.org/2000/svg", "path"); rl2.setAttribute("d", "M14 11v6");
+      const rl3 = document.createElementNS("http://www.w3.org/2000/svg", "path"); rl3.setAttribute("d", "M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2");
+      rbSvg.appendChild(rpl); rbSvg.appendChild(rpa); rbSvg.appendChild(rl1); rbSvg.appendChild(rl2); rbSvg.appendChild(rl3);
+      const rbLabel = document.createElement("span");
+      rbLabel.textContent = "Remove local lyrics";
+      removeBtn.appendChild(rbSvg); removeBtn.appendChild(rbLabel);
       removeBtn.style.display = "none";
-
       const currentVideoId = videoId;
-      void hasLocalLyrics(currentVideoId).then(has => {
-        if (has) removeBtn.style.display = "";
-      });
-
+      void hasLocalLyrics(currentVideoId).then(has => { if (has) removeBtn.style.display = ""; });
       removeBtn.addEventListener("click", () => {
-        void removeLocalLyrics(currentVideoId).then(() => {
-          removeBtn.style.display = "none";
-          reloadLyrics();
-        });
+        void removeLocalLyrics(currentVideoId).then(() => { removeBtn.style.display = "none"; reloadLyrics(); });
       });
       footer.appendChild(removeBtn);
     }

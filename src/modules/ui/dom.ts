@@ -816,23 +816,19 @@ export function showLocalLyricsUploadModal(
   const app = document.querySelector("ytmusic-app");
   if (!app || document.getElementsByClassName(UPLOAD_MODAL_OVERLAY_CLASS).length > 0) return;
 
-  // Use MODAL_OVERLAY_CLASS so modal.css provides the backdrop, positioning, and z-index
   const overlay = document.createElement("div");
   overlay.classList.add(MODAL_OVERLAY_CLASS, UPLOAD_MODAL_OVERLAY_CLASS);
 
-  // Use MODAL_CLASS so modal.css provides the modal container styling
   const modal = document.createElement("div");
   modal.classList.add(MODAL_CLASS, UPLOAD_MODAL_CLASS);
 
   // Header
   const header = document.createElement("div");
   header.className = `${MODAL_CLASS}--header`;
-
   const titleEl = document.createElement("h1");
   titleEl.className = `${MODAL_CLASS}--title`;
   titleEl.textContent = "Upload local lyrics";
   header.appendChild(titleEl);
-
   const closeBtn = document.createElement("button");
   closeBtn.className = `${MODAL_CLASS}--close`;
   closeBtn.setAttribute("aria-label", "Close");
@@ -854,7 +850,6 @@ export function showLocalLyricsUploadModal(
   // Drop zone
   const dropzone = document.createElement("div");
   dropzone.className = "blyrics-upload-dropzone";
-
   const uploadSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   uploadSvg.setAttribute("width", "32"); uploadSvg.setAttribute("height", "32");
   uploadSvg.setAttribute("viewBox", "0 0 24 24"); uploadSvg.setAttribute("fill", "none");
@@ -868,29 +863,23 @@ export function showLocalLyricsUploadModal(
   usl.setAttribute("x1", "12"); usl.setAttribute("y1", "3"); usl.setAttribute("x2", "12"); usl.setAttribute("y2", "15");
   uploadSvg.appendChild(usp1); uploadSvg.appendChild(usp2); uploadSvg.appendChild(usl);
   dropzone.appendChild(uploadSvg);
-
   const dropLabel = document.createElement("span");
   dropLabel.className = "blyrics-upload-dropzone__label";
   dropLabel.textContent = "Drag & drop your lyric file here, or click to browse";
   dropzone.appendChild(dropLabel);
-
   const dropHint = document.createElement("span");
   dropHint.className = "blyrics-upload-dropzone__hint";
   dropHint.textContent = "Supported: .ttml, .lrc, .txt";
   dropzone.appendChild(dropHint);
-
   const statusEl = document.createElement("span");
   statusEl.className = "blyrics-upload-dropzone__status";
   dropzone.appendChild(statusEl);
-
   const fileInput = document.createElement("input");
   fileInput.type = "file";
   fileInput.accept = ".ttml,.xml,.lrc,.txt";
   fileInput.style.display = "none";
   dropzone.appendChild(fileInput);
-
   const onSuccess = () => { void closeUploadModal(); reloadLyrics(); };
-
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files?.[0];
     if (!file || !videoId) return;
@@ -914,7 +903,7 @@ export function showLocalLyricsUploadModal(
 
   // Composer link
   const composerRow = document.createElement("p");
-  composerRow.className = "blyrics-upload-composer-hint";
+  composerRow.className = "blyrics-upload-modal-hint";
   composerRow.textContent = "Compose lyrics at ";
   const composerLink = document.createElement("a");
   composerLink.href = buildComposerUrl(song, artist, album, duration, videoId ?? "");
@@ -923,6 +912,19 @@ export function showLocalLyricsUploadModal(
   composerLink.textContent = "composer.boidu.dev";
   composerRow.appendChild(composerLink);
   modal.appendChild(composerRow);
+
+  // Unison upload hint
+  const unisonRow = document.createElement("p");
+  unisonRow.className = "blyrics-upload-modal-hint";
+  unisonRow.textContent = "If you have synced lyrics for this song, please upload it to ";
+  const unisonLink = document.createElement("a");
+  unisonLink.href = buildUnisonSubmitUrl(song, artist, album, duration, videoId ?? "").toString();
+  unisonLink.target = "_blank";
+  unisonLink.rel = "noreferrer noopener";
+  unisonLink.textContent = "Unison";
+  unisonRow.appendChild(unisonLink);
+  unisonRow.appendChild(document.createTextNode("."));
+  modal.appendChild(unisonRow);
 
   overlay.appendChild(modal);
   app.appendChild(overlay);

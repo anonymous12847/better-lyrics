@@ -1011,8 +1011,7 @@ function createFooter(
 
     // ── Local lyrics buttons ──────────────────────────────────────────────
     const uploadBtn = document.createElement("button");
-    uploadBtn.className = `${FOOTER_CLASS}__local-upload`;
-    uploadBtn.title = "Upload local lyrics";
+    uploadBtn.className = `${FOOTER_CLASS}__container ${FOOTER_CLASS}__local-upload`;
     uploadBtn.setAttribute("aria-label", "Upload local lyrics");
     const ubSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     ubSvg.setAttribute("viewBox", "0 0 24 24"); ubSvg.setAttribute("width", "16"); ubSvg.setAttribute("height", "16");
@@ -1033,8 +1032,7 @@ function createFooter(
 
     if (videoId) {
       const removeBtn = document.createElement("button");
-      removeBtn.className = `${FOOTER_CLASS}__local-remove`;
-      removeBtn.title = "Remove local lyrics file";
+      removeBtn.className = `${FOOTER_CLASS}__container ${FOOTER_CLASS}__local-remove`;
       removeBtn.setAttribute("aria-label", "Remove local lyrics file");
       const rbSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       rbSvg.setAttribute("viewBox", "0 0 24 24"); rbSvg.setAttribute("width", "16"); rbSvg.setAttribute("height", "16");
